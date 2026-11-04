@@ -2,8 +2,17 @@ import "./globals.css";
 import Link from "next/link";
 
 export const metadata = {
-  title: "SIGERUTT",
-  description: "Sistema de Gestión de Rutas de Transporte Terrestre",
+  title: {
+    default: "SIGERUTT",
+    template: "%s | SIGERUTT",
+  },
+  description:
+    "Sistema de Gestión de Rutas de Transporte Terrestre",
+  manifest: "/manifest.webmanifest",
+};
+
+export const viewport = {
+  themeColor: "#ff7a00",
 };
 
 export default function RootLayout({ children }) {
