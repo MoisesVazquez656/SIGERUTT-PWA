@@ -1,71 +1,80 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabaseClient";
 
 export default function Asignaciones() {
+  const supabase = createClient();
+
+  const [asignaciones, setAsignaciones] = useState([]);
   const [buscar, setBuscar] = useState("");
+  const [cargando, setCargando] = useState(true);
 
-  const [asignaciones, setAsignaciones] = useState([
-    {
-      id: 1,
-      ruta: "Villahermosa - Cárdenas",
-      vehiculo: "TB-2456-A",
-      operador: "Juan Pérez López",
-      fecha: "2026-11-05",
-      hora: "08:00",
-      estado: "Programada",
-    },
-    {
-      id: 2,
-      ruta: "Villahermosa - Macuspana",
-      vehiculo: "TB-7788-B",
-      operador: "Carlos Hernández Ruiz",
-      fecha: "2026-11-06",
-      hora: "10:30",
-      estado: "En ruta",
-    },
-    {
-      id: 3,
-      ruta: "Comalcalco - Paraíso",
-      vehiculo: "TB-9032-C",
-      operador: "Miguel Sánchez Díaz",
-      fecha: "2026-11-07",
-      hora: "07:00",
-      estado: "Finalizada",
-    },
-  ]);
+  useEffect(() => {
+    obtenerAsignaciones();
+  }, []);
 
-  const asignacionesFiltradas = asignaciones.filter((asignacion) =>
-    asignacion.ruta.toLowerCase().includes(buscar.toLowerCase()) ||
-    asignacion.vehiculo.toLowerCase().includes(buscar.toLowerCase()) ||
-    asignacion.operador.toLowerCase().includes(buscar.toLowerCase()) ||
-    asignacion.estado.toLowerCase().includes(buscar.toLowerCase())
-  );
+  async function obtenerAsignaciones() {
+    setCargando(true);
 
-  function eliminarAsignacion(id) {
+    const { data, error } = await supabase
+      .from("asignaciones")
+      .select(`
+        id,
+        fecha,
+        hora,
+        estado,
+        rutas (
+          nombre
+        ),
+        vehiculos (
+          placa
+        ),
+        operadores (
+          nombre
+        )
+      `)
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error(error);
+
+      alert(
+        "Error al cargar las asignaciones."
+      );
+    } else {
+      setAsignaciones(data || []);
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarAsignacion(id) {
     const confirmar = confirm(
       "¿Deseas eliminar esta asignación?"
     );
 
-    if (confirmar) {
-      const nuevasAsignaciones = asignaciones.filter(
-        (asignacion) => asignacion.id !== id
-      );
+    if (!confirmar) return;
 
-      setAsignaciones(nuevasAsignaciones);
+    const { error } = await supabase
+      .from("asignaciones")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("No se pudo eliminar.");
+      return;
     }
-  }
 
-  function editarAsignacion(asignacion) {
-    alert(
-      "Editar asignación:\n" +
-      asignacion.ruta +
-      "\n\nLa pantalla de edición se agregará posteriormente."
-    );
+    obtenerAsignaciones();
   }
 
   function claseEstado(estado) {
+    if (estado === "Finalizada") {
+      return "estadoActivo";
+    }
+
     if (estado === "Programada") {
       return "estadoAsignado";
     }
@@ -74,23 +83,37 @@ export default function Asignaciones() {
       return "estadoMantenimiento";
     }
 
-    if (estado === "Finalizada") {
-      return "estadoActivo";
-    }
-
     return "estadoInactivo";
   }
+
+  const filtradas = asignaciones.filter((a) => {
+    const texto = buscar.toLowerCase();
+
+    return (
+      a.rutas?.nombre
+        ?.toLowerCase()
+        .includes(texto) ||
+
+      a.vehiculos?.placa
+        ?.toLowerCase()
+        .includes(texto) ||
+
+      a.operadores?.nombre
+        ?.toLowerCase()
+        .includes(texto)
+    );
+  });
 
   return (
     <main className="pagina">
 
       <div className="encabezadoPagina">
+
         <div>
           <h1>Gestión de Asignaciones</h1>
 
           <p>
-            Relaciona rutas, vehículos y operadores para organizar
-            los servicios de transporte.
+            Relaciona rutas, vehículos y operadores.
           </p>
         </div>
 
@@ -100,23 +123,27 @@ export default function Asignaciones() {
         >
           + Nueva asignación
         </Link>
+
       </div>
 
       <section className="contenido">
 
         <div className="busqueda">
+
           <input
             type="text"
-            placeholder="Buscar por ruta, vehículo, operador o estado..."
+            placeholder="Buscar asignación..."
             value={buscar}
-            onChange={(e) => setBuscar(e.target.value)}
+            onChange={(e) =>
+              setBuscar(e.target.value)
+            }
           />
+
         </div>
 
         <div className="tablaContenedor">
 
           <table>
-
             <thead>
               <tr>
                 <th>ID</th>
@@ -132,56 +159,57 @@ export default function Asignaciones() {
 
             <tbody>
 
-              {asignacionesFiltradas.length > 0 ? (
+              {cargando ? (
 
-                asignacionesFiltradas.map((asignacion) => (
+                <tr>
+                  <td colSpan="8">
+                    Cargando asignaciones...
+                  </td>
+                </tr>
 
-                  <tr key={asignacion.id}>
+              ) : filtradas.length > 0 ? (
 
-                    <td>{asignacion.id}</td>
+                filtradas.map((a) => (
 
-                    <td>{asignacion.ruta}</td>
+                  <tr key={a.id}>
 
-                    <td>{asignacion.vehiculo}</td>
+                    <td>{a.id}</td>
 
-                    <td>{asignacion.operador}</td>
+                    <td>
+                      {a.rutas?.nombre}
+                    </td>
 
-                    <td>{asignacion.fecha}</td>
+                    <td>
+                      {a.vehiculos?.placa}
+                    </td>
 
-                    <td>{asignacion.hora}</td>
+                    <td>
+                      {a.operadores?.nombre}
+                    </td>
+
+                    <td>{a.fecha}</td>
+
+                    <td>{a.hora}</td>
 
                     <td>
                       <span
-                        className={claseEstado(asignacion.estado)}
+                        className={claseEstado(
+                          a.estado
+                        )}
                       >
-                        {asignacion.estado}
+                        {a.estado}
                       </span>
                     </td>
 
                     <td>
-
-                      <div className="acciones">
-
-                        <button
-                          className="botonEditar"
-                          onClick={() =>
-                            editarAsignacion(asignacion)
-                          }
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          className="botonEliminar"
-                          onClick={() =>
-                            eliminarAsignacion(asignacion.id)
-                          }
-                        >
-                          Eliminar
-                        </button>
-
-                      </div>
-
+                      <button
+                        className="botonEliminar"
+                        onClick={() =>
+                          eliminarAsignacion(a.id)
+                        }
+                      >
+                        Eliminar
+                      </button>
                     </td>
 
                   </tr>
@@ -195,20 +223,18 @@ export default function Asignaciones() {
                     colSpan="8"
                     className="sinDatos"
                   >
-                    No se encontraron asignaciones.
+                    No hay asignaciones registradas.
                   </td>
                 </tr>
 
               )}
 
             </tbody>
-
           </table>
 
         </div>
 
       </section>
-
     </main>
   );
 }

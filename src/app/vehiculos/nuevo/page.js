@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "../../lib/supabaseClient";
 
 export default function NuevoVehiculo() {
   const router = useRouter();
+  const supabase = createClient();
+
+  const [guardando, setGuardando] = useState(false);
 
   const [formulario, setFormulario] = useState({
     placa: "",
@@ -15,8 +19,8 @@ export default function NuevoVehiculo() {
     estado: "Disponible",
   });
 
-  function cambiarDato(evento) {
-    const { name, value } = evento.target;
+  function cambiarDato(e) {
+    const { name, value } = e.target;
 
     setFormulario({
       ...formulario,
@@ -24,23 +28,45 @@ export default function NuevoVehiculo() {
     });
   }
 
-  function guardarVehiculo(evento) {
-    evento.preventDefault();
+  async function guardarVehiculo(e) {
+    e.preventDefault();
 
     if (
-      formulario.placa === "" ||
-      formulario.tipo === "" ||
-      formulario.marca === ""
+      formulario.placa.trim() === "" ||
+      formulario.tipo.trim() === "" ||
+      formulario.marca.trim() === ""
     ) {
       alert("Completa los campos obligatorios.");
       return;
     }
 
-    console.log(formulario);
+    setGuardando(true);
+
+    const { error } = await supabase
+      .from("vehiculos")
+      .insert([
+        {
+          placa: formulario.placa,
+          tipo: formulario.tipo,
+          marca: formulario.marca,
+          modelo: formulario.modelo || null,
+          capacidad: formulario.capacidad || null,
+          estado: formulario.estado,
+        },
+      ]);
+
+    setGuardando(false);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo registrar el vehículo.");
+      return;
+    }
 
     alert("Vehículo registrado correctamente.");
 
     router.push("/vehiculos");
+    router.refresh();
   }
 
   return (
@@ -65,12 +91,12 @@ export default function NuevoVehiculo() {
                 name="placa"
                 value={formulario.placa}
                 onChange={cambiarDato}
-                placeholder="Ejemplo: AB-123-CD"
+                placeholder="Ejemplo: TB-2456-A"
               />
             </div>
 
             <div className="campo">
-              <label>Tipo de vehículo *</label>
+              <label>Tipo *</label>
 
               <select
                 name="tipo"
@@ -118,14 +144,14 @@ export default function NuevoVehiculo() {
           <div className="filaFormulario">
 
             <div className="campo">
-              <label>Capacidad de carga</label>
+              <label>Capacidad</label>
 
               <input
                 type="text"
                 name="capacidad"
                 value={formulario.capacidad}
                 onChange={cambiarDato}
-                placeholder="Ejemplo: 10 toneladas"
+                placeholder="Ejemplo: 15 toneladas"
               />
             </div>
 
@@ -140,7 +166,9 @@ export default function NuevoVehiculo() {
                 <option value="Disponible">Disponible</option>
                 <option value="Asignado">Asignado</option>
                 <option value="Mantenimiento">Mantenimiento</option>
-                <option value="Fuera de servicio">Fuera de servicio</option>
+                <option value="Fuera de servicio">
+                  Fuera de servicio
+                </option>
               </select>
             </div>
 
@@ -159,8 +187,11 @@ export default function NuevoVehiculo() {
             <button
               type="submit"
               className="botonGuardar"
+              disabled={guardando}
             >
-              Guardar vehículo
+              {guardando
+                ? "Guardando..."
+                : "Guardar vehículo"}
             </button>
 
           </div>

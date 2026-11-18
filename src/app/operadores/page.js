@@ -1,80 +1,76 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabaseClient";
 
 export default function Operadores() {
+  const supabase = createClient();
+
+  const [operadores, setOperadores] = useState([]);
   const [buscar, setBuscar] = useState("");
+  const [cargando, setCargando] = useState(true);
 
-  const [operadores, setOperadores] = useState([
-    {
-      id: 1,
-      nombre: "Juan Pérez López",
-      licencia: "LIC-2026-001",
-      telefono: "9931234567",
-      correo: "juan@correo.com",
-      estado: "Disponible",
-    },
-    {
-      id: 2,
-      nombre: "Carlos Hernández Ruiz",
-      licencia: "LIC-2026-002",
-      telefono: "9939876543",
-      correo: "carlos@correo.com",
-      estado: "Asignado",
-    },
-    {
-      id: 3,
-      nombre: "Miguel Sánchez Díaz",
-      licencia: "LIC-2026-003",
-      telefono: "9935552211",
-      correo: "miguel@correo.com",
-      estado: "Descanso",
-    },
-  ]);
+  useEffect(() => {
+    obtenerOperadores();
+  }, []);
 
-  const operadoresFiltrados = operadores.filter((operador) =>
-    operador.nombre.toLowerCase().includes(buscar.toLowerCase()) ||
-    operador.licencia.toLowerCase().includes(buscar.toLowerCase()) ||
-    operador.telefono.toLowerCase().includes(buscar.toLowerCase()) ||
-    operador.correo.toLowerCase().includes(buscar.toLowerCase())
-  );
+  async function obtenerOperadores() {
+    setCargando(true);
 
-  function eliminarOperador(id) {
-    const confirmar = confirm("¿Deseas eliminar este operador?");
+    const { data, error } = await supabase
+      .from("operadores")
+      .select("*")
+      .order("id", { ascending: true });
 
-    if (confirmar) {
-      const nuevosOperadores = operadores.filter(
-        (operador) => operador.id !== id
-      );
-
-      setOperadores(nuevosOperadores);
+    if (error) {
+      console.error(error);
+      alert("Error al cargar los operadores.");
+    } else {
+      setOperadores(data || []);
     }
+
+    setCargando(false);
   }
 
-  function editarOperador(operador) {
-    alert(
-      "Editar operador:\n" +
-      operador.nombre +
-      "\n\nLa pantalla de edición se agregará posteriormente."
+  async function eliminarOperador(id) {
+    const confirmar = confirm(
+      "¿Deseas eliminar este operador?"
     );
+
+    if (!confirmar) return;
+
+    const { error } = await supabase
+      .from("operadores")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      alert("No se pudo eliminar el operador.");
+      return;
+    }
+
+    obtenerOperadores();
   }
 
   function claseEstado(estado) {
-    if (estado === "Disponible") {
-      return "estadoActivo";
-    }
-
-    if (estado === "Asignado") {
-      return "estadoAsignado";
-    }
-
-    if (estado === "Descanso") {
-      return "estadoMantenimiento";
-    }
+    if (estado === "Disponible") return "estadoActivo";
+    if (estado === "Asignado") return "estadoAsignado";
+    if (estado === "Descanso") return "estadoMantenimiento";
 
     return "estadoInactivo";
   }
+
+  const operadoresFiltrados = operadores.filter((operador) => {
+    const texto = buscar.toLowerCase();
+
+    return (
+      operador.nombre?.toLowerCase().includes(texto) ||
+      operador.licencia?.toLowerCase().includes(texto) ||
+      operador.telefono?.toLowerCase().includes(texto) ||
+      operador.correo?.toLowerCase().includes(texto)
+    );
+  });
 
   return (
     <main className="pagina">
@@ -84,11 +80,14 @@ export default function Operadores() {
           <h1>Gestión de Operadores</h1>
 
           <p>
-            Consulta y administra los operadores registrados en el sistema.
+            Consulta y administra los operadores registrados.
           </p>
         </div>
 
-        <Link href="/operadores/nuevo" className="botonPrincipal">
+        <Link
+          href="/operadores/nuevo"
+          className="botonPrincipal"
+        >
           + Nuevo operador
         </Link>
       </div>
@@ -98,15 +97,15 @@ export default function Operadores() {
         <div className="busqueda">
           <input
             type="text"
-            placeholder="Buscar por nombre, licencia, teléfono o correo..."
+            placeholder="Buscar operador..."
             value={buscar}
             onChange={(e) => setBuscar(e.target.value)}
           />
         </div>
 
         <div className="tablaContenedor">
-          <table>
 
+          <table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -121,48 +120,45 @@ export default function Operadores() {
 
             <tbody>
 
-              {operadoresFiltrados.length > 0 ? (
+              {cargando ? (
+
+                <tr>
+                  <td colSpan="7" className="sinDatos">
+                    Cargando operadores...
+                  </td>
+                </tr>
+
+              ) : operadoresFiltrados.length > 0 ? (
 
                 operadoresFiltrados.map((operador) => (
 
                   <tr key={operador.id}>
-
                     <td>{operador.id}</td>
-
                     <td>{operador.nombre}</td>
-
                     <td>{operador.licencia}</td>
-
                     <td>{operador.telefono}</td>
-
                     <td>{operador.correo}</td>
 
                     <td>
-                      <span className={claseEstado(operador.estado)}>
+                      <span
+                        className={claseEstado(
+                          operador.estado
+                        )}
+                      >
                         {operador.estado}
                       </span>
                     </td>
 
                     <td>
-                      <div className="acciones">
-
-                        <button
-                          className="botonEditar"
-                          onClick={() => editarOperador(operador)}
-                        >
-                          Editar
-                        </button>
-
-                        <button
-                          className="botonEliminar"
-                          onClick={() => eliminarOperador(operador.id)}
-                        >
-                          Eliminar
-                        </button>
-
-                      </div>
+                      <button
+                        className="botonEliminar"
+                        onClick={() =>
+                          eliminarOperador(operador.id)
+                        }
+                      >
+                        Eliminar
+                      </button>
                     </td>
-
                   </tr>
 
                 ))
@@ -171,19 +167,17 @@ export default function Operadores() {
 
                 <tr>
                   <td colSpan="7" className="sinDatos">
-                    No se encontraron operadores.
+                    No hay operadores registrados.
                   </td>
                 </tr>
 
               )}
 
             </tbody>
-
           </table>
+
         </div>
-
       </section>
-
     </main>
   );
 }

@@ -1,66 +1,57 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabaseClient";
 
 export default function Vehiculos() {
+  const supabase = createClient();
+
+  const [vehiculos, setVehiculos] = useState([]);
   const [buscar, setBuscar] = useState("");
+  const [cargando, setCargando] = useState(true);
 
-  const [vehiculos, setVehiculos] = useState([
-    {
-      id: 1,
-      placa: "TB-2456-A",
-      tipo: "Camión",
-      marca: "Freightliner",
-      modelo: "Cascadia",
-      capacidad: "15 toneladas",
-      estado: "Disponible",
-    },
-    {
-      id: 2,
-      placa: "TB-7788-B",
-      tipo: "Camioneta",
-      marca: "Nissan",
-      modelo: "NP300",
-      capacidad: "1 tonelada",
-      estado: "Asignado",
-    },
-    {
-      id: 3,
-      placa: "TB-9032-C",
-      tipo: "Tráiler",
-      marca: "Kenworth",
-      modelo: "T680",
-      capacidad: "25 toneladas",
-      estado: "Mantenimiento",
-    },
-  ]);
+  useEffect(() => {
+    obtenerVehiculos();
+  }, []);
 
-  const vehiculosFiltrados = vehiculos.filter((vehiculo) =>
-    vehiculo.placa.toLowerCase().includes(buscar.toLowerCase()) ||
-    vehiculo.tipo.toLowerCase().includes(buscar.toLowerCase()) ||
-    vehiculo.marca.toLowerCase().includes(buscar.toLowerCase()) ||
-    vehiculo.modelo.toLowerCase().includes(buscar.toLowerCase())
-  );
+  async function obtenerVehiculos() {
+    setCargando(true);
 
-  function eliminarVehiculo(id) {
-    const confirmar = confirm("¿Deseas eliminar este vehículo?");
+    const { data, error } = await supabase
+      .from("vehiculos")
+      .select("*")
+      .order("id", { ascending: true });
 
-    if (confirmar) {
-      const nuevosVehiculos = vehiculos.filter(
-        (vehiculo) => vehiculo.id !== id
-      );
-
-      setVehiculos(nuevosVehiculos);
+    if (error) {
+      console.error(error);
+      alert("Error al cargar los vehículos.");
+    } else {
+      setVehiculos(data || []);
     }
+
+    setCargando(false);
   }
 
-  function editarVehiculo(vehiculo) {
-    alert(
-      "Editar vehículo:\n" +
-      vehiculo.placa +
-      "\n\nLa pantalla de edición se agregará posteriormente."
-    );
+  async function eliminarVehiculo(id) {
+    const confirmar = confirm("¿Deseas eliminar este vehículo?");
+
+    if (!confirmar) return;
+
+    const { error } = await supabase
+      .from("vehiculos")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo eliminar el vehículo.");
+      return;
+    }
+
+    alert("Vehículo eliminado correctamente.");
+
+    obtenerVehiculos();
   }
 
   function claseEstado(estado) {
@@ -79,9 +70,19 @@ export default function Vehiculos() {
     return "estadoInactivo";
   }
 
+  const vehiculosFiltrados = vehiculos.filter((vehiculo) => {
+    const texto = buscar.toLowerCase();
+
+    return (
+      vehiculo.placa?.toLowerCase().includes(texto) ||
+      vehiculo.tipo?.toLowerCase().includes(texto) ||
+      vehiculo.marca?.toLowerCase().includes(texto) ||
+      vehiculo.modelo?.toLowerCase().includes(texto)
+    );
+  });
+
   return (
     <main className="pagina">
-
       <div className="encabezadoPagina">
         <div>
           <h1>Gestión de Vehículos</h1>
@@ -97,7 +98,6 @@ export default function Vehiculos() {
       </div>
 
       <section className="contenido">
-
         <div className="busqueda">
           <input
             type="text"
@@ -109,7 +109,6 @@ export default function Vehiculos() {
 
         <div className="tablaContenedor">
           <table>
-
             <thead>
               <tr>
                 <th>ID</th>
@@ -124,24 +123,21 @@ export default function Vehiculos() {
             </thead>
 
             <tbody>
-
-              {vehiculosFiltrados.length > 0 ? (
-
+              {cargando ? (
+                <tr>
+                  <td colSpan="8" className="sinDatos">
+                    Cargando vehículos...
+                  </td>
+                </tr>
+              ) : vehiculosFiltrados.length > 0 ? (
                 vehiculosFiltrados.map((vehiculo) => (
-
                   <tr key={vehiculo.id}>
-
                     <td>{vehiculo.id}</td>
-
                     <td>{vehiculo.placa}</td>
-
                     <td>{vehiculo.tipo}</td>
-
                     <td>{vehiculo.marca}</td>
-
-                    <td>{vehiculo.modelo}</td>
-
-                    <td>{vehiculo.capacidad}</td>
+                    <td>{vehiculo.modelo || "Sin dato"}</td>
+                    <td>{vehiculo.capacidad || "Sin dato"}</td>
 
                     <td>
                       <span className={claseEstado(vehiculo.estado)}>
@@ -150,48 +146,30 @@ export default function Vehiculos() {
                     </td>
 
                     <td>
-
                       <div className="acciones">
-
-                        <button
-                          className="botonEditar"
-                          onClick={() => editarVehiculo(vehiculo)}
-                        >
-                          Editar
-                        </button>
-
                         <button
                           className="botonEliminar"
-                          onClick={() => eliminarVehiculo(vehiculo.id)}
+                          onClick={() =>
+                            eliminarVehiculo(vehiculo.id)
+                          }
                         >
                           Eliminar
                         </button>
-
                       </div>
-
                     </td>
-
                   </tr>
-
                 ))
-
               ) : (
-
                 <tr>
                   <td colSpan="8" className="sinDatos">
-                    No se encontraron vehículos.
+                    No hay vehículos registrados.
                   </td>
                 </tr>
-
               )}
-
             </tbody>
-
           </table>
         </div>
-
       </section>
-
     </main>
   );
 }

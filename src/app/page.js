@@ -1,83 +1,225 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { createClient } from "./lib/supabaseClient";
 
 export default function Home() {
+  const supabase = createClient();
+
+  const [resumen, setResumen] = useState({
+    rutas: 0,
+    vehiculos: 0,
+    operadores: 0,
+    asignaciones: 0,
+  });
+
+  const [cargando, setCargando] = useState(true);
+
+  useEffect(() => {
+    cargarResumen();
+  }, []);
+
+  async function cargarResumen() {
+    setCargando(true);
+
+    const [
+      rutas,
+      vehiculos,
+      operadores,
+      asignaciones,
+    ] = await Promise.all([
+      supabase
+        .from("rutas")
+        .select("*", { count: "exact", head: true }),
+
+      supabase
+        .from("vehiculos")
+        .select("*", { count: "exact", head: true }),
+
+      supabase
+        .from("operadores")
+        .select("*", { count: "exact", head: true }),
+
+      supabase
+        .from("asignaciones")
+        .select("*", { count: "exact", head: true }),
+    ]);
+
+    setResumen({
+      rutas: rutas.count || 0,
+      vehiculos: vehiculos.count || 0,
+      operadores: operadores.count || 0,
+      asignaciones: asignaciones.count || 0,
+    });
+
+    setCargando(false);
+  }
+
   return (
-    <main className="inicio">
-      <section className="hero">
+    <main className="dashboardPagina">
+
+      <section className="dashboardHero">
         <div>
+          <span className="etiquetaDashboard">
+            Panel administrativo
+          </span>
+
           <h1>SIGERUTT</h1>
-          <h2>Sistema de Gestión de Rutas de Transporte Terrestre</h2>
+
+          <h2>
+            Sistema de Gestión de Rutas de Transporte Terrestre
+          </h2>
+
           <p>
-            Plataforma para administrar rutas, vehículos, operadores
-            y asignaciones de transporte terrestre.
+            Administra rutas, vehículos, operadores y
+            asignaciones desde una sola plataforma.
           </p>
         </div>
       </section>
 
-      <section className="dashboard">
-        <h2>Resumen del sistema</h2>
+      <section className="dashboardContenido">
+
+        <div className="tituloSeccion">
+          <div>
+            <h2>Resumen general</h2>
+            <p>
+              Información actual registrada en el sistema.
+            </p>
+          </div>
+        </div>
 
         <div className="resumenGrid">
-          <div className="resumenCard">
-            <span className="resumenNumero">3</span>
-            <span className="resumenTitulo">Rutas</span>
-            <p>Rutas disponibles en el sistema.</p>
-          </div>
 
-          <div className="resumenCard">
-            <span className="resumenNumero">3</span>
-            <span className="resumenTitulo">Vehículos</span>
-            <p>Unidades registradas.</p>
-          </div>
+          <Link href="/rutas" className="resumenCard">
+            <div className="iconoCard">R</div>
 
-          <div className="resumenCard">
-            <span className="resumenNumero">3</span>
-            <span className="resumenTitulo">Operadores</span>
-            <p>Operadores registrados.</p>
-          </div>
+            <div>
+              <span className="resumenNumero">
+                {cargando ? "..." : resumen.rutas}
+              </span>
 
-          <div className="resumenCard">
-            <span className="resumenNumero">3</span>
-            <span className="resumenTitulo">Asignaciones</span>
-            <p>Servicios programados.</p>
+              <h3>Rutas</h3>
+
+              <p>Rutas registradas</p>
+            </div>
+          </Link>
+
+          <Link href="/vehiculos" className="resumenCard">
+            <div className="iconoCard">V</div>
+
+            <div>
+              <span className="resumenNumero">
+                {cargando ? "..." : resumen.vehiculos}
+              </span>
+
+              <h3>Vehículos</h3>
+
+              <p>Unidades de transporte</p>
+            </div>
+          </Link>
+
+          <Link href="/operadores" className="resumenCard">
+            <div className="iconoCard">O</div>
+
+            <div>
+              <span className="resumenNumero">
+                {cargando ? "..." : resumen.operadores}
+              </span>
+
+              <h3>Operadores</h3>
+
+              <p>Operadores registrados</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/asignaciones"
+            className="resumenCard"
+          >
+            <div className="iconoCard">A</div>
+
+            <div>
+              <span className="resumenNumero">
+                {cargando ? "..." : resumen.asignaciones}
+              </span>
+
+              <h3>Asignaciones</h3>
+
+              <p>Servicios registrados</p>
+            </div>
+          </Link>
+
+        </div>
+
+        <div className="tituloSeccion accesosTitulo">
+          <div>
+            <h2>Accesos rápidos</h2>
+            <p>
+              Ingresa directamente a los módulos principales.
+            </p>
           </div>
         </div>
 
-        <h2 className="tituloAccesos">Accesos rápidos</h2>
+        <div className="accesosGrid">
 
-        <div className="modulos">
-          <Link href="/rutas" className="tarjeta">
-            <h3>Rutas</h3>
-            <p>
-              Consulta, registra y administra las rutas de transporte.
-            </p>
-            <span>Administrar rutas →</span>
+          <Link href="/rutas" className="accesoCard">
+            <span className="accesoIcono">01</span>
+
+            <div>
+              <h3>Gestión de Rutas</h3>
+              <p>
+                Registra y administra los recorridos.
+              </p>
+            </div>
+
+            <span className="flechaCard">→</span>
           </Link>
 
-          <Link href="/vehiculos" className="tarjeta">
-            <h3>Vehículos</h3>
-            <p>
-              Gestiona las unidades utilizadas para los servicios.
-            </p>
-            <span>Administrar vehículos →</span>
+          <Link href="/vehiculos" className="accesoCard">
+            <span className="accesoIcono">02</span>
+
+            <div>
+              <h3>Gestión de Vehículos</h3>
+              <p>
+                Administra las unidades de transporte.
+              </p>
+            </div>
+
+            <span className="flechaCard">→</span>
           </Link>
 
-          <Link href="/operadores" className="tarjeta">
-            <h3>Operadores</h3>
-            <p>
-              Consulta y administra los operadores de transporte.
-            </p>
-            <span>Administrar operadores →</span>
+          <Link href="/operadores" className="accesoCard">
+            <span className="accesoIcono">03</span>
+
+            <div>
+              <h3>Gestión de Operadores</h3>
+              <p>
+                Controla la información de conductores.
+              </p>
+            </div>
+
+            <span className="flechaCard">→</span>
           </Link>
 
-          <Link href="/asignaciones" className="tarjeta">
-            <h3>Asignaciones</h3>
-            <p>
-              Relaciona rutas, unidades y operadores.
-            </p>
-            <span>Administrar asignaciones →</span>
+          <Link
+            href="/asignaciones"
+            className="accesoCard"
+          >
+            <span className="accesoIcono">04</span>
+
+            <div>
+              <h3>Asignaciones</h3>
+              <p>
+                Relaciona rutas, vehículos y operadores.
+              </p>
+            </div>
+
+            <span className="flechaCard">→</span>
           </Link>
+
         </div>
+
       </section>
     </main>
   );

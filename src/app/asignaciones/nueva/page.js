@@ -1,81 +1,139 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "../../lib/supabaseClient";
 
 export default function NuevaAsignacion() {
   const router = useRouter();
+  const supabase = createClient();
+
+  const [rutas, setRutas] = useState([]);
+  const [vehiculos, setVehiculos] = useState([]);
+  const [operadores, setOperadores] = useState([]);
 
   const [formulario, setFormulario] = useState({
-    ruta: "",
-    vehiculo: "",
-    operador: "",
+    ruta_id: "",
+    vehiculo_id: "",
+    operador_id: "",
     fecha: "",
     hora: "",
     estado: "Programada",
   });
 
-  function cambiarDato(evento) {
-    const { name, value } = evento.target;
+  useEffect(() => {
+    cargarDatos();
+  }, []);
 
+  async function cargarDatos() {
+    const { data: rutasData } = await supabase
+      .from("rutas")
+      .select("id, nombre")
+      .eq("estado", "Activa");
+
+    const { data: vehiculosData } = await supabase
+      .from("vehiculos")
+      .select("id, placa")
+      .eq("estado", "Disponible");
+
+    const { data: operadoresData } = await supabase
+      .from("operadores")
+      .select("id, nombre")
+      .eq("estado", "Disponible");
+
+    setRutas(rutasData || []);
+    setVehiculos(vehiculosData || []);
+    setOperadores(operadoresData || []);
+  }
+
+  function cambiarDato(e) {
     setFormulario({
       ...formulario,
-      [name]: value,
+      [e.target.name]: e.target.value,
     });
   }
 
-  function guardarAsignacion(evento) {
-    evento.preventDefault();
+  async function guardarAsignacion(e) {
+    e.preventDefault();
 
     if (
-      formulario.ruta === "" ||
-      formulario.vehiculo === "" ||
-      formulario.operador === "" ||
-      formulario.fecha === ""
+      !formulario.ruta_id ||
+      !formulario.vehiculo_id ||
+      !formulario.operador_id ||
+      !formulario.fecha
     ) {
       alert("Completa los campos obligatorios.");
       return;
     }
 
-    console.log(formulario);
+    const { error } = await supabase
+      .from("asignaciones")
+      .insert([
+        {
+          ruta_id: Number(formulario.ruta_id),
+          vehiculo_id: Number(
+            formulario.vehiculo_id
+          ),
+          operador_id: Number(
+            formulario.operador_id
+          ),
+          fecha: formulario.fecha,
+          hora: formulario.hora || null,
+          estado: formulario.estado,
+        },
+      ]);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo registrar.");
+      return;
+    }
 
     alert("Asignación registrada correctamente.");
 
     router.push("/asignaciones");
+    router.refresh();
   }
 
   return (
     <main className="pagina">
+
       <div className="encabezadoFormulario">
-        <div>
-          <h1>Nueva Asignación</h1>
-          <p>
-            Asigna una ruta, un vehículo y un operador a un servicio.
-          </p>
-        </div>
+        <h1>Nueva Asignación</h1>
+
+        <p>
+          Asigna una ruta, vehículo y operador.
+        </p>
       </div>
 
       <section className="formularioContenedor">
-        <form onSubmit={guardarAsignacion} className="formulario">
+
+        <form
+          onSubmit={guardarAsignacion}
+          className="formulario"
+        >
 
           <div className="campo">
             <label>Ruta *</label>
 
             <select
-              name="ruta"
-              value={formulario.ruta}
+              name="ruta_id"
+              value={formulario.ruta_id}
               onChange={cambiarDato}
             >
-              <option value="">Selecciona una ruta</option>
-              <option value="Villahermosa - Cárdenas">
-                Villahermosa - Cárdenas
+              <option value="">
+                Selecciona una ruta
               </option>
-              <option value="Villahermosa - Macuspana">
-                Villahermosa - Macuspana
-              </option>
-              <option value="Villahermosa - Comalcalco">
-                Villahermosa - Comalcalco
-              </option>
+
+              {rutas.map((ruta) => (
+                <option
+                  key={ruta.id}
+                  value={ruta.id}
+                >
+                  {ruta.nombre}
+                </option>
+              ))}
+
             </select>
           </div>
 
@@ -85,17 +143,24 @@ export default function NuevaAsignacion() {
               <label>Vehículo *</label>
 
               <select
-                name="vehiculo"
-                value={formulario.vehiculo}
+                name="vehiculo_id"
+                value={formulario.vehiculo_id}
                 onChange={cambiarDato}
               >
-                <option value="">Selecciona un vehículo</option>
-                <option value="TB-2456-A">
-                  TB-2456-A
+
+                <option value="">
+                  Selecciona un vehículo
                 </option>
-                <option value="TB-7788-B">
-                  TB-7788-B
-                </option>
+
+                {vehiculos.map((vehiculo) => (
+                  <option
+                    key={vehiculo.id}
+                    value={vehiculo.id}
+                  >
+                    {vehiculo.placa}
+                  </option>
+                ))}
+
               </select>
             </div>
 
@@ -103,17 +168,24 @@ export default function NuevaAsignacion() {
               <label>Operador *</label>
 
               <select
-                name="operador"
-                value={formulario.operador}
+                name="operador_id"
+                value={formulario.operador_id}
                 onChange={cambiarDato}
               >
-                <option value="">Selecciona un operador</option>
-                <option value="Juan Pérez López">
-                  Juan Pérez López
+
+                <option value="">
+                  Selecciona un operador
                 </option>
-                <option value="Carlos Hernández Ruiz">
-                  Carlos Hernández Ruiz
-                </option>
+
+                {operadores.map((operador) => (
+                  <option
+                    key={operador.id}
+                    value={operador.id}
+                  >
+                    {operador.nombre}
+                  </option>
+                ))}
+
               </select>
             </div>
 
@@ -146,6 +218,7 @@ export default function NuevaAsignacion() {
           </div>
 
           <div className="campo">
+
             <label>Estado</label>
 
             <select
@@ -153,11 +226,12 @@ export default function NuevaAsignacion() {
               value={formulario.estado}
               onChange={cambiarDato}
             >
-              <option value="Programada">Programada</option>
-              <option value="En ruta">En ruta</option>
-              <option value="Finalizada">Finalizada</option>
-              <option value="Cancelada">Cancelada</option>
+              <option>Programada</option>
+              <option>En ruta</option>
+              <option>Finalizada</option>
+              <option>Cancelada</option>
             </select>
+
           </div>
 
           <div className="botonesFormulario">
@@ -165,7 +239,9 @@ export default function NuevaAsignacion() {
             <button
               type="button"
               className="botonCancelar"
-              onClick={() => router.push("/asignaciones")}
+              onClick={() =>
+                router.push("/asignaciones")
+              }
             >
               Cancelar
             </button>
@@ -180,7 +256,9 @@ export default function NuevaAsignacion() {
           </div>
 
         </form>
+
       </section>
+
     </main>
   );
 }

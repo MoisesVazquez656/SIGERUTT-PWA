@@ -2,9 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { createClient } from "../../lib/supabaseClient";
 
 export default function NuevaRuta() {
   const router = useRouter();
+  const supabase = createClient();
+
+  const [guardando, setGuardando] = useState(false);
 
   const [formulario, setFormulario] = useState({
     nombre: "",
@@ -14,8 +18,8 @@ export default function NuevaRuta() {
     estado: "Activa",
   });
 
-  function cambiarDato(evento) {
-    const { name, value } = evento.target;
+  function cambiarDato(e) {
+    const { name, value } = e.target;
 
     setFormulario({
       ...formulario,
@@ -23,23 +27,49 @@ export default function NuevaRuta() {
     });
   }
 
-  function guardarRuta(evento) {
-    evento.preventDefault();
+  async function guardarRuta(e) {
+    e.preventDefault();
 
     if (
-      formulario.nombre === "" ||
-      formulario.origen === "" ||
-      formulario.destino === ""
+      formulario.nombre.trim() === "" ||
+      formulario.origen.trim() === "" ||
+      formulario.destino.trim() === ""
     ) {
       alert("Completa los campos obligatorios.");
       return;
     }
 
+    setGuardando(true);
+
+    const { error } = await supabase
+      .from("rutas")
+      .insert([
+        {
+          nombre: formulario.nombre,
+          origen: formulario.origen,
+          destino: formulario.destino,
+
+          distancia:
+            formulario.distancia === ""
+              ? null
+              : Number(formulario.distancia),
+
+          estado: formulario.estado,
+        },
+      ]);
+
+    setGuardando(false);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo registrar la ruta.");
+      return;
+    }
+
     alert("Ruta registrada correctamente.");
 
-    console.log(formulario);
-
     router.push("/rutas");
+    router.refresh();
   }
 
   return (
@@ -47,13 +77,15 @@ export default function NuevaRuta() {
       <div className="encabezadoFormulario">
         <div>
           <h1>Nueva Ruta</h1>
-          <p>Registra una nueva ruta de transporte terrestre.</p>
+          <p>
+            Registra una nueva ruta de transporte terrestre.
+          </p>
         </div>
       </div>
 
       <section className="formularioContenedor">
         <form onSubmit={guardarRuta} className="formulario">
-          
+
           <div className="campo">
             <label>Nombre de la ruta *</label>
 
@@ -67,6 +99,7 @@ export default function NuevaRuta() {
           </div>
 
           <div className="filaFormulario">
+
             <div className="campo">
               <label>Origen *</label>
 
@@ -90,9 +123,11 @@ export default function NuevaRuta() {
                 placeholder="Ciudad de destino"
               />
             </div>
+
           </div>
 
           <div className="filaFormulario">
+
             <div className="campo">
               <label>Distancia aproximada</label>
 
@@ -113,16 +148,20 @@ export default function NuevaRuta() {
                 value={formulario.estado}
                 onChange={cambiarDato}
               >
-                <option value="Activa">Activa</option>
-                <option value="Inactiva">Inactiva</option>
-                <option value="Mantenimiento">
-                  En revisión
+                <option value="Activa">
+                  Activa
+                </option>
+
+                <option value="Inactiva">
+                  Inactiva
                 </option>
               </select>
             </div>
+
           </div>
 
           <div className="botonesFormulario">
+
             <button
               type="button"
               className="botonCancelar"
@@ -134,9 +173,13 @@ export default function NuevaRuta() {
             <button
               type="submit"
               className="botonGuardar"
+              disabled={guardando}
             >
-              Guardar ruta
+              {guardando
+                ? "Guardando..."
+                : "Guardar ruta"}
             </button>
+
           </div>
 
         </form>

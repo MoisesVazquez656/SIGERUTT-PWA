@@ -1,57 +1,74 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { createClient } from "../lib/supabaseClient";
 
 export default function Rutas() {
+  const supabase = createClient();
+
+  const [rutas, setRutas] = useState([]);
   const [buscar, setBuscar] = useState("");
+  const [cargando, setCargando] = useState(true);
 
-  const [rutas, setRutas] = useState([
-    {
-      id: 1,
-      nombre: "Villahermosa - Cárdenas",
-      origen: "Villahermosa",
-      destino: "Cárdenas",
-      estado: "Activa",
-    },
-    {
-      id: 2,
-      nombre: "Villahermosa - Macuspana",
-      origen: "Villahermosa",
-      destino: "Macuspana",
-      estado: "Activa",
-    },
-    {
-      id: 3,
-      nombre: "Comalcalco - Paraíso",
-      origen: "Comalcalco",
-      destino: "Paraíso",
-      estado: "Inactiva",
-    },
-  ]);
+  useEffect(() => {
+    obtenerRutas();
+  }, []);
 
-  const rutasFiltradas = rutas.filter((ruta) =>
-    ruta.nombre.toLowerCase().includes(buscar.toLowerCase()) ||
-    ruta.origen.toLowerCase().includes(buscar.toLowerCase()) ||
-    ruta.destino.toLowerCase().includes(buscar.toLowerCase())
-  );
+  async function obtenerRutas() {
+    setCargando(true);
 
-  function eliminarRuta(id) {
+    const {
+    data: { user },
+    } = await supabase.auth.getUser();
+
+    console.log("USUARIO EN RUTAS:", user);
+
+    const { data, error } = await supabase
+      .from("rutas")
+      .select("*")
+      .order("id", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      alert("Error al cargar las rutas.");
+    } else {
+      setRutas(data || []);
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarRuta(id) {
     const confirmar = confirm("¿Deseas eliminar esta ruta?");
 
-    if (confirmar) {
-      const nuevasRutas = rutas.filter((ruta) => ruta.id !== id);
-      setRutas(nuevasRutas);
+    if (!confirmar) return;
+
+    const { error } = await supabase
+      .from("rutas")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo eliminar la ruta.");
+      return;
     }
+
+    alert("Ruta eliminada correctamente.");
+
+    obtenerRutas();
   }
 
-  function editarRuta(ruta) {
-    alert(
-      "Editar ruta:\n" +
-      ruta.nombre +
-      "\n\nLa pantalla de edición se agregará posteriormente."
+  const rutasFiltradas = rutas.filter((ruta) => {
+    const texto = buscar.toLowerCase();
+
+    return (
+      ruta.nombre?.toLowerCase().includes(texto) ||
+      ruta.origen?.toLowerCase().includes(texto) ||
+      ruta.destino?.toLowerCase().includes(texto)
     );
-  }
+  });
 
   return (
     <main className="pagina">
@@ -69,7 +86,6 @@ export default function Rutas() {
       </div>
 
       <section className="contenido">
-
         <div className="busqueda">
           <input
             type="text"
@@ -87,19 +103,32 @@ export default function Rutas() {
                 <th>Ruta</th>
                 <th>Origen</th>
                 <th>Destino</th>
+                <th>Distancia</th>
                 <th>Estado</th>
                 <th>Acciones</th>
               </tr>
             </thead>
 
             <tbody>
-              {rutasFiltradas.length > 0 ? (
+              {cargando ? (
+                <tr>
+                  <td colSpan="7" className="sinDatos">
+                    Cargando rutas...
+                  </td>
+                </tr>
+              ) : rutasFiltradas.length > 0 ? (
                 rutasFiltradas.map((ruta) => (
                   <tr key={ruta.id}>
                     <td>{ruta.id}</td>
                     <td>{ruta.nombre}</td>
                     <td>{ruta.origen}</td>
                     <td>{ruta.destino}</td>
+
+                    <td>
+                      {ruta.distancia
+                        ? `${ruta.distancia} km`
+                        : "Sin dato"}
+                    </td>
 
                     <td>
                       <span
@@ -115,12 +144,12 @@ export default function Rutas() {
 
                     <td>
                       <div className="acciones">
-                        <button
+                        <Link
+                          href={`/rutas/editar/${ruta.id}`}
                           className="botonEditar"
-                          onClick={() => editarRuta(ruta)}
                         >
                           Editar
-                        </button>
+                        </Link>
 
                         <button
                           className="botonEliminar"
@@ -134,15 +163,14 @@ export default function Rutas() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan="6" className="sinDatos">
-                    No se encontraron rutas.
+                  <td colSpan="7" className="sinDatos">
+                    No hay rutas registradas.
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-
       </section>
     </main>
   );
